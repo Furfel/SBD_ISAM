@@ -26,6 +26,18 @@ public class Record {
         this.overflow = overflow;
     }
 
+    public Record(Record r) {
+        this();
+        copyFrom(r);
+    }
+
+    public void copyFrom(Record r) {
+        if(r==null) return;
+        id = r.getId();
+        data = r.data.clone();
+        overflow = r.overflow;
+    }
+
     public int getId() {
         return id & ~DELETE_MASK;
     }
