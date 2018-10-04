@@ -1,50 +1,10 @@
 package pg.ppabis.sbd2;
 
 import java.util.Random;
+import static pg.ppabis.sbd2.Page.*;
+import static pg.ppabis.sbd2.Index.*;
 
 public class Main {
-
-    public static final int RECORDS_PER_PAGE = 7;
-    public static final int BLOCK_SIZE = RECORDS_PER_PAGE * Record.SIZE;
-
-    public static int[] indexes;
-    public static Record[] page;
-    public static Record[] overflow;
-
-    public static int overflowRecords = 0;
-    public static int mainRecords = 0;
-
-    public static int findPageNumberForRecord(int id) {
-        int i = 0;
-        while (i + 1 < indexes.length && indexes[i + 1] <= id) ++i;
-        return i;
-    }
-
-    public static int findPlaceInPageForRecord(int id) {
-        int i = 0;
-        while (i < page.length && page[i] != null && id > page[i].getId()) ++i;
-        return i;
-        /*while (i+1 < page.length && page[i+1] != null && page[i+1].getId() > 0 && page[i+1].getId() <= id) {
-            ++i;
-        }
-        if( page[i].getId() < id && ( (i+1>=page.length) || (page[i+1] == null || page[i+1].getId() <= 0) ) ) ++i;
-        return i;*/
-    }
-
-    public static Record getFromOverflow(int of) {
-        return overflow[of];
-    }
-
-    public static Record getFromPage(int pagen, int i) {
-        page = sample_pages[pagen]; //To be removed
-        return page[i];
-    }
-
-    public static void setOnPage(int pagen, int i, Record r) {
-        page = sample_pages[pagen];
-        page[i] = r;
-        //savePage()
-    }
 
     public static int[] findInOverflow(int id, int of) {
         if (of == Record.OVERFLOW_NONE) return new int[]{-1, -1}; //Main record has no overflows
@@ -59,12 +19,6 @@ public class Main {
             right = r.overflow;
             if (right == Record.OVERFLOW_NONE) return new int[]{left, right}; //Return last address and -1
         } while (true);
-    }
-
-    public static int putInOverflow(int id, byte[] data, int ov) {
-        overflow[overflowRecords] = new Record(id, data, ov);
-        overflowRecords++;
-        return overflowRecords-1;
     }
 
     public static int[] findPlaceForRecord(int id) {
@@ -166,53 +120,36 @@ public class Main {
                     System.out.println("Wstawianie pomiedzy [" + ovs[0] + ", " + ovs[1] + "] czyli {" + r1.getId() + " < " + id + " < " + r2.getId() + " }");
                 }
             }
-            printDb(res[0], res[1], ovs);
+            printDb(res[0], res[1], ovs, true);
 
             int[] pl = insertRecord(id, (""+ new Random().nextInt(999999)).getBytes());
-            printDb(pl[0], pl[1], pl);
+            printDb(pl[0], pl[1], pl, true);
         }
     }
 
-    public static void printDb(int markPg, int markRec, int[] markOf) {
+    public static void printDb(int markPg, int markRec, int[] markOf, boolean follow) {
         for (int i = 0; i < sample_pages.length; ++i) {
             System.out.println((i == markPg ? "> " : "") + "Page #" + i);
             System.out.println("--------");
             for (int j = 0; j < sample_pages[i].length; ++j) {
-                System.out.println((j == markRec && i == markPg ? "\t> " : "") + sample_pages[i][j]);
+                String ovString = "";
+                if(follow && getFromPage(i, j) != null) {
+                    int ov = getFromPage(i, j).overflow;
+                    while(ov != Record.OVERFLOW_NONE) {
+                        Record o = getFromOverflow(ov);
+                        ovString+=" -> "+ov+":"+o.getId();
+                        ov = o.overflow;
+                    }
+                }
+                System.out.println((j == markRec && i == markPg ? "\t> " : "") + getFromPage(i, j) + ovString);
             }
         }
+        if(follow) return;
         System.out.println();
         for (int i = 0; i < overflow.length; ++i)
             if (overflow[i] != null)
                 System.out.println(i+"\t"+(markOf[0] == i || markOf[1] == i ? "\t> " : "") + "#" + overflow[i]);
     }
 
-    private static Record[][] sample_pages;
 
-    public static void sampleDb() {
-        sample_pages = new Record[2][RECORDS_PER_PAGE];
-        indexes = new int[2];
-
-        indexes[0] = 100;
-        indexes[1] = 600;
-
-        for (int i = 0; i < sample_pages[0].length; ++i)
-            sample_pages[0][i] = new Record(50 + i * 30, "12345".getBytes());
-        sample_pages[0][0].overflow = 2;
-
-        sample_pages[1][0] = new Record(600, "666".getBytes(), 1);
-        sample_pages[1][1] = new Record(700, "123124".getBytes());
-
-        mainRecords = 12;
-
-        overflow = new Record[100];
-        overflow[0] = new Record(580, "123412".getBytes());
-        overflow[1] = new Record(570, "1234".getBytes(), 0);
-        overflow[2] = new Record(20, "123455".getBytes(), 4);
-        overflow[4] = new Record(25, "213124".getBytes(), 3);
-        overflow[3] = new Record(30, "21312".getBytes());
-
-        overflowRecords = 5;
-
-    }
 }
