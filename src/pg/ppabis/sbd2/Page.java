@@ -29,6 +29,7 @@ public class Page {
 
     public static Record getFromOverflow(int of) {
     	requestPageOA(of);
+    	//return page[of % RECORDS_PER_PAGE];
         return overflow[of];
     }
 
@@ -46,8 +47,9 @@ public class Page {
     }
 
     public static void setInOverflow(int oa, Record r) {
+    	requestPageOA(oa);
         overflow[oa] = r;
-        //savePage()
+        savePage();
     }
     
     public static void pushPage(int Indexid) {
@@ -60,8 +62,10 @@ public class Page {
     }
 
     public static int putInOverflow(int id, byte[] data, int ov) {
+    	requestPageOA(overflowRecords);
         overflow[overflowRecords] = new Record(id, data, ov);
         overflowRecords++;
+        savePage();
         return overflowRecords-1;
     }
     

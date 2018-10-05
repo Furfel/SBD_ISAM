@@ -28,6 +28,7 @@ public class Main {
 
     public static int[] findPlaceForRecord(int id) {
         int pagen = findPageNumberForRecord(id);
+        requestPage(pagen);
         page = sample_pages[pagen]; //To be removed
         int place = findPlaceInPageForRecord(id);
         if (place >= RECORDS_PER_PAGE) {
