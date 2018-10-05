@@ -1,6 +1,7 @@
 package pg.ppabis.sbd2;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 public class Record {
 
@@ -20,7 +21,7 @@ public class Record {
     public Record(int id, byte[] data) {
         this();
         this.id = id;
-        this.data = data.clone();
+        this.data = Arrays.copyOf(data, this.data.length);
     }
 
     public Record(int id, byte[] data, int overflow) {
@@ -62,7 +63,7 @@ public class Record {
     }
 
     public boolean isDeleted() {
-        return (id & DELETE_MASK) > 0;
+        return (id & DELETE_MASK) != 0;
     }
 
     public void delete() {

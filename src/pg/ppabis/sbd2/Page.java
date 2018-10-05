@@ -73,10 +73,19 @@ public class Page {
         savePage();
         return overflowRecords-1;
     }
-    
+
+    public static void generateEmptyPage(byte[] out) {
+        final byte[] record = new Record(0,new byte[]{}).toBytes();
+        for(int i=0; i<RECORDS_PER_PAGE; ++i) {
+            for(int j=0;j < record.length; ++j)
+                out[i*Record.SIZE + j] = record[j];
+        }
+    }
+
     public static void requestPage(int p) {
     	if(currentPage == p) return;
     	byte[] binary = new byte[BLOCK_SIZE];
+    	generateEmptyPage(binary);
     	try {
             RandomAccessFile file = new RandomAccessFile(Main.FileName,"r");
             file.seek(p * BLOCK_SIZE);
@@ -105,7 +114,8 @@ public class Page {
             RandomAccessFile file = new RandomAccessFile(Main.FileName, "rw");
             file.seek(currentPage * BLOCK_SIZE);
             for (int i = 0; i < RECORDS_PER_PAGE; ++i) {
-                file.write(page[i].toBytes());
+                if(page[i]==null || page[i].getId()==0) file.write(new Record(0,new byte[]{}).toBytes());
+                else file.write(page[i].toBytes());
             }
             file.close();
         } catch(IOException e) {
@@ -116,7 +126,7 @@ public class Page {
     public static void reorder() {
         int _page = 0, _ind = 0;
         int _stat_records = 0, _stat_deleted = 0;
-        final byte[] _empty = new byte[Record.SIZE];
+        final byte[] _empty = new Record(0, new byte[] {0}).toBytes();
         try {
             FileOutputStream fos = new FileOutputStream(Main.FileName+".tmp");
             DataOutputStream ios = new DataOutputStream(new FileOutputStream(Main.FileName+".index.tmp"));
@@ -129,6 +139,7 @@ public class Page {
                         Record ovr = Page.getFromOverflow(ov);
                         ov = ovr.overflow;
                         if(ovr.isDeleted()) {_stat_deleted++; continue;}
+                        if(ovr.getId()<=0) continue;
                         ovr.overflow = Record.OVERFLOW_NONE;
                         fos.write(ovr.toBytes());
                         _stat_records++;
@@ -143,6 +154,7 @@ public class Page {
                     }
                     r = Page.getFromPage(i, j);
                     if(r.isDeleted()) {_stat_deleted++; continue;}
+                    if(r.getId()<=0) continue;
                     r.overflow = Record.OVERFLOW_NONE;
                     fos.write(r.toBytes());
                     _stat_records++;

@@ -32,5 +32,13 @@ public class Index {
         indexes = indexesTemp.stream().mapToInt(i -> i).toArray();
         System.out.println("[i]>Index: wczytano "+indexes.length+" indeksow");
     }
+
+    public static void createEmptyIndex() {
+        indexes = new int[0];
+    }
+
+    public static boolean isEmpty() {
+        return indexes == null || indexes.length<=0;
+    }
     
 }

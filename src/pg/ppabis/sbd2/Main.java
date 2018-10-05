@@ -1,10 +1,8 @@
 package pg.ppabis.sbd2;
 
-import java.io.BufferedWriter;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
+import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
+
+import java.io.*;
 import java.util.Random;
 import static pg.ppabis.sbd2.Page.*;
 import static pg.ppabis.sbd2.Index.*;
@@ -79,6 +77,11 @@ public class Main {
     }
 
     public static int[] insertRecord(int id, byte[] data) {
+        if(Index.isEmpty()) {
+            System.out.println("Wstawianie pierwszego rekordu i pierwszej strony");
+            Index.pushId(id);
+            Page.setOnPage(0, 0, new Record(id, data));
+        }
         int[] place = findPlaceForRecord(id);
         
         if(place[0] >= Index.indexes.length) {
@@ -95,7 +98,7 @@ public class Main {
         		System.out.println("[i]>Nadpisywanie usunietego rekordu");
         		updateRecord(place, new Record(id, data, r.overflow));
         	} else {
-        		System.out.println("!>Rekord juz jest!");
+        		System.out.println("[!]>Rekord juz jest!");
         	}
             return place;
         }
@@ -133,6 +136,7 @@ public class Main {
     }
 
     public static void find(int id) {
+        if(Index.isEmpty()) {System.out.println("[!]>Baza danych jest pusta!"); return;}
         int[] place = findPlaceForRecord(id);
         Record r = getFromPage(place[0], place[1]);
         if(r  == null) {
@@ -157,6 +161,7 @@ public class Main {
     }
 
     public static void delete(int id) {
+        if(Index.isEmpty()) {System.out.println("[!]>Baza danych jest pusta!"); return;}
         int[] place = findPlaceForRecord(id);
         Record r = getFromPage(place[0], place[1]);
         if(r  == null) {
@@ -223,6 +228,19 @@ public class Main {
 
             int[] pl = insertRecord(id, (""+ new Random().nextInt(999999)).getBytes());
             printDb(pl[0], pl[1], pl, true);
+        }
+    }
+
+    public static void createDb() throws IOException {
+        File dbFile = new File(FileName);
+        File indexFile = new File(FileName+".index");
+        if(dbFile.exists() && indexFile.exists()) {
+            System.out.println("Loading database and index: "+FileName);
+            Index.loadIndex(FileName+".index");
+        } else {
+            indexFile.createNewFile();
+            dbFile.createNewFile();
+            Index.createEmptyIndex();
         }
     }
 
