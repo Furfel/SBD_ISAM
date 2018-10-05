@@ -1,3 +1,6 @@
 ISAM.iml
 .idea/
 out/
+/target/
+/.classpath
+/.project

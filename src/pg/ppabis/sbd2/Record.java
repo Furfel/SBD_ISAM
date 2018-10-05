@@ -36,6 +36,7 @@ public class Record {
         id = r.getId();
         data = r.data.clone();
         overflow = r.overflow;
+        if(r.isDeleted()) delete();
     }
 
     public int getId() {

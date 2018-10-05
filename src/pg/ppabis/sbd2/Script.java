@@ -39,6 +39,13 @@ public class Script {
                     }
                     break;
                 case "insert":
+                	if(p.length<=2) {
+                		System.err.println("Malformed line "+(i+1)+": "+l);
+                	} else {
+                		int id = Integer.parseInt(p[1]);
+                		byte[] data = p[2].getBytes();
+                		Main.insertRecord(id, data);
+                	}
                     break;
                 case "delete":
                     if(p.length<=1) {
@@ -50,6 +57,13 @@ public class Script {
                     break;
                 case "update":
                     break;
+                case "export":
+                	if(p.length<=1) {
+                        System.err.println("Malformed line "+(i+1)+": "+l);
+                    } else {
+                        Main.export(p[1]);
+                    }
+                	break;
                 case "print":
                     Main.printDb(-1, -1, new int[]{-1, -1}, true);
                     break;

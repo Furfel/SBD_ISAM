@@ -1,6 +1,9 @@
 package pg.ppabis.sbd2;
 
+import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Random;
 import static pg.ppabis.sbd2.Page.*;
@@ -74,27 +77,53 @@ public class Main {
 
     public static int[] insertRecord(int id, byte[] data) {
         int[] place = findPlaceForRecord(id);
+        
+        if(place[0] >= Index.indexes.length) {
+        	Page.pushPage(id);
+        	updateRecord(place, new Record(id, data, -1));
+        	mainRecords++;
+        	return place;
+        }
+        
         Record r = getFromPage(place[0], place[1]);
+        
         if(r != null && r.getId() == id) {
-            System.out.println("!>Rekord juz jest!");
+        	if(r.isDeleted()) {
+        		System.out.println("[i]>Nadpisywanie usunietego rekordu");
+        		updateRecord(place, new Record(id, data, r.overflow));
+        	} else {
+        		System.out.println("!>Rekord juz jest!");
+        	}
             return place;
         }
+        
         if(r==null || r.getId()<=0) {
-            System.out.println("Wstawianie na stronie "+place[0]+"["+place[1]+"]");
+            System.out.println("[i]>Wstawianie na stronie "+place[0]+"["+place[1]+"]");
             updateRecord(place, new Record(id, data, -1));
+            mainRecords++;
         } else {
             int[] placeOA = findInOverflow(id, r.overflow);
             if( isPlaceOnRecord(placeOA) ) {
                 int newRec = putInOverflow(id, data, -1);
                 updateOverflowAddress(place, newRec);
+                System.out.println("[i]>Wstawianie w overflow ["+newRec+"]");
             } else if( isPlaceAtTheBeginningOfChain(placeOA) ) {
                 int newRec = putInOverflow(id, data, placeOA[1]);
                 updateOverflowAddress(place, newRec);
+                System.out.println("[i]>Wstawianie w overflow ["+newRec+"]");
             } else if( isPlaceOccupied(placeOA) ) {
-
+            	r = getFromOverflow(placeOA[0]);
+            	if(r.isDeleted()) {
+            		System.out.println("[i]>Nadpisywanie usunietego rekordu w overflow");
+            		updateRecordOA(place[0], new Record(id, data, r.overflow));
+            	} else {
+            		System.out.println("[!]>Rekord juz jest!");
+            	}
+                return place;
             } else {
                 int newRec = putInOverflow(id, data, placeOA[1]);
                 updadteOverflowAddressOA(placeOA[0], newRec);
+                System.out.println("[i]>Wstawianie w overflow ["+newRec+"]");
             }
         }
         return place;
@@ -216,6 +245,50 @@ public class Main {
         for (int i = 0; i < overflow.length; ++i)
             if (overflow[i] != null)
                 System.out.println(i+"\t"+(markOf[0] == i || markOf[1] == i ? "\t> " : "") + "#" + overflow[i]);
+    }
+    
+    public static void export(String file) {
+    	try {
+    		FileWriter fw = new FileWriter(file);
+    		BufferedWriter bw = new BufferedWriter(fw);
+    			
+    			bw.write("<HTML><HEAD><STYLE TYPE=\"text/css\">.deleted {text-decoration: line-through;} table, th, td {border:1px solid #333; border-collapse:collapse; padding: 2px;} span.smallid {font-size: 9px; border: 1px solid #222; padding: 1px;}</STYLE></HEAD><BODY>Pages: <B>"+indexes.length+"</B><BR>Main records: <B>"+mainRecords+"</B><BR>Overflow records: <B>"+overflowRecords+"</B><BR>");
+    			
+    			bw.write("<TABLE><TR><TH>ID</TH><TH>Page</TH></TR>");
+    			for(int i = 0; i < indexes.length; ++i) {
+    				bw.write("<TR><TD>"+indexes[i]+"</TD><TD>"+i+"</TD></TR>");
+    			}
+    			bw.write("</TABLE><BR>");
+    			
+    			for(int i = 0; i < indexes.length; ++i) {
+    				bw.write("<H4>Page "+i+"</H4>");
+    				bw.write("<TABLE><TR><TH>ID</TH><TH>Data</TH><TH>Overflow</TH></TR>");
+    				for(int j = 0; j < RECORDS_PER_PAGE; j++) {
+    					Record r = getFromPage(i,  j);
+    					if(r != null) {
+    						bw.write("<TR CLASS=\""+(r.isDeleted()?"deleted":"")+"\"><TD>"+r.getId()+"</TD><TD>"+new String(r.data)+"</TD><TD>"+r.overflow+"</TD></TR>");
+    						if(r.overflow != Record.OVERFLOW_NONE) {
+    							String overflowsLine = "";
+    							int ov = r.overflow;
+    			                while(ov != Record.OVERFLOW_NONE) {
+    			                    Record o = getFromOverflow(ov);
+    			                    overflowsLine+="-> <SPAN CLASS=\"smallid\">"+ov+"</SPAN> "+o.getId();
+    			                    ov = o.overflow;
+    			                }
+    							bw.write("<TR STYLE=\"background: #EEFFFF\"><TD COLSPAN=\"3\">"+overflowsLine+"</TD></TR>");
+    						}
+    					}
+    				}
+    				bw.write("</TABLE><BR>");
+    			}
+    			
+    			bw.write("</HTML></BODY>");
+    		
+    		bw.flush();
+    		bw.close();
+    	} catch(IOException e) {
+    		System.err.println(e.getMessage());
+    	}
     }
 
 

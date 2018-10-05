@@ -1,5 +1,8 @@
 package pg.ppabis.sbd2;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
 public class Page {
 
     public static final int RECORDS_PER_PAGE = 7;
@@ -41,6 +44,15 @@ public class Page {
         overflow[oa] = r;
         //savePage()
     }
+    
+    public static void pushPage(int Indexid) {
+    	 Index.pushId(Indexid);
+    	 //moveOverflowsABlockDown()
+    	 ArrayList<Record[]> tempPages = new ArrayList<Record[]>();
+    	 tempPages.addAll(Arrays.asList(sample_pages));
+    	 tempPages.add(new Record[RECORDS_PER_PAGE]);
+    	 sample_pages = tempPages.toArray(sample_pages);
+    }
 
     public static int putInOverflow(int id, byte[] data, int ov) {
         overflow[overflowRecords] = new Record(id, data, ov);
@@ -64,7 +76,7 @@ public class Page {
         sample_pages[1][0] = new Record(600, "666".getBytes(), 1);
         sample_pages[1][1] = new Record(700, "123124".getBytes());
 
-        mainRecords = 12;
+        mainRecords = sample_pages[0].length+2;
 
         overflow = new Record[100];
         overflow[0] = new Record(580, "123412".getBytes());
