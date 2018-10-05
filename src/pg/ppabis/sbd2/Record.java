@@ -1,5 +1,7 @@
 package pg.ppabis.sbd2;
 
+import java.nio.ByteBuffer;
+
 public class Record {
 
     public static final int OVERFLOW_NONE=-1;
@@ -37,6 +39,22 @@ public class Record {
         data = r.data.clone();
         overflow = r.overflow;
         if(r.isDeleted()) delete();
+    }
+    
+    public Record(byte[] binary) {
+    	this();
+    	ByteBuffer bb = ByteBuffer.wrap(binary);
+    	id = bb.getInt();
+    	overflow = bb.getInt();
+    	bb.get(data, 0, 30);
+    }
+    
+    public byte[] toBytes() {
+    	ByteBuffer bb = ByteBuffer.allocate(SIZE);
+    	bb.putInt(id);
+    	bb.putInt(overflow);
+    	bb.put(data);
+    	return bb.array();
     }
 
     public int getId() {

@@ -1,5 +1,6 @@
 package pg.ppabis.sbd2;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -9,6 +10,7 @@ public class Page {
     public static final int BLOCK_SIZE = RECORDS_PER_PAGE * Record.SIZE;
 
     public static Record[] page;
+    public static int currentPage = -1;
     public static Record[] overflow;
 
     public static int overflowRecords = 0;
@@ -26,18 +28,21 @@ public class Page {
     }
 
     public static Record getFromOverflow(int of) {
+    	requestPageOA(of);
         return overflow[of];
     }
 
     public static Record getFromPage(int pagen, int i) {
+    	requestPage(pagen);
         page = sample_pages[pagen]; //To be removed
         return page[i];
     }
 
     public static void setOnPage(int pagen, int i, Record r) {
+    	requestPage(pagen);
         page = sample_pages[pagen];
         page[i] = r;
-        //savePage()
+        savePage();
     }
 
     public static void setInOverflow(int oa, Record r) {
@@ -58,6 +63,35 @@ public class Page {
         overflow[overflowRecords] = new Record(id, data, ov);
         overflowRecords++;
         return overflowRecords-1;
+    }
+    
+    public static void requestPage(int p) {
+    	if(currentPage == p) return;
+    	byte[] binary = new byte[BLOCK_SIZE];
+    	//file.seek(p * BLOCK_SIZE)
+    	//file.read(binary)
+    	//file.close
+    	if(page == null) page = new Record[RECORDS_PER_PAGE];
+    	ByteBuffer bb = ByteBuffer.wrap(binary);
+    	for(int i=0; i < RECORDS_PER_PAGE; ++i) {
+    		byte[] buffer = new byte[Record.SIZE];
+    		bb.get(buffer);
+    		page[i] = new Record(buffer);
+    	}
+    	currentPage = p;
+    }
+    
+    public static void requestPageOA(int addr) {
+    	int pageIndex = Index.indexes.length + (addr/RECORDS_PER_PAGE);
+    	requestPage(pageIndex);
+    }
+    
+    public static void savePage() {
+    	//file.seek(currentPage * BLOCK_SIZE)
+    	for(int i=0; i < RECORDS_PER_PAGE; ++i) {
+    		//file.write(page[i].toBytes());
+    	}
+    	//file.close()
     }
 
     public static Record[][] sample_pages;
