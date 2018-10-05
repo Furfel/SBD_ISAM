@@ -1,8 +1,9 @@
 package pg.ppabis.sbd2;
 
+import java.io.DataInputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 public class Index {
     public static int[] indexes;
@@ -19,6 +20,17 @@ public class Index {
     		indexesTemp.add(Integer.valueOf(indexes[i]));
     	indexesTemp.add(id);
     	indexes = indexesTemp.stream().mapToInt(i -> i).toArray();
+    }
+
+    public static void loadIndex(String file) throws IOException {
+        ArrayList<Integer> indexesTemp = new ArrayList<>();
+        DataInputStream dis = new DataInputStream(new FileInputStream(file));
+        while(dis.available()>=4) {
+            int id=dis.readInt();
+            indexesTemp.add(Integer.valueOf(id));
+        }
+        indexes = indexesTemp.stream().mapToInt(i -> i).toArray();
+        System.out.println("[i]>Index: wczytano "+indexes.length+" indeksow");
     }
     
 }

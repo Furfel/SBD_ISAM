@@ -1,5 +1,9 @@
 package pg.ppabis.sbd2;
 
+import java.io.DataOutputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,6 +12,7 @@ public class Page {
 
     public static final int RECORDS_PER_PAGE = 7;
     public static final int BLOCK_SIZE = RECORDS_PER_PAGE * Record.SIZE;
+    public static final int ALPHA_RECORDS = (int)(RECORDS_PER_PAGE * 0.5);
 
     public static Record[] page;
     public static int currentPage = -1;
@@ -72,9 +77,14 @@ public class Page {
     public static void requestPage(int p) {
     	if(currentPage == p) return;
     	byte[] binary = new byte[BLOCK_SIZE];
-    	//file.seek(p * BLOCK_SIZE)
-    	//file.read(binary)
-    	//file.close
+    	try {
+            RandomAccessFile file = new RandomAccessFile(Main.FileName,"r");
+            file.seek(p * BLOCK_SIZE);
+            file.read(binary);
+            file.close();
+    	} catch(IOException e) {
+    	    System.err.println(e.getMessage());
+        }
     	if(page == null) page = new Record[RECORDS_PER_PAGE];
     	ByteBuffer bb = ByteBuffer.wrap(binary);
     	for(int i=0; i < RECORDS_PER_PAGE; ++i) {
@@ -91,11 +101,67 @@ public class Page {
     }
     
     public static void savePage() {
-    	//file.seek(currentPage * BLOCK_SIZE)
-    	for(int i=0; i < RECORDS_PER_PAGE; ++i) {
-    		//file.write(page[i].toBytes());
-    	}
-    	//file.close()
+        try {
+            RandomAccessFile file = new RandomAccessFile(Main.FileName, "rw");
+            file.seek(currentPage * BLOCK_SIZE);
+            for (int i = 0; i < RECORDS_PER_PAGE; ++i) {
+                file.write(page[i].toBytes());
+            }
+            file.close();
+        } catch(IOException e) {
+            System.err.println(e.getMessage());
+        }
+    }
+
+    public static void reorder() {
+        int _page = 0, _ind = 0;
+        int _stat_records = 0, _stat_deleted = 0;
+        final byte[] _empty = new byte[Record.SIZE];
+        try {
+            FileOutputStream fos = new FileOutputStream(Main.FileName+".tmp");
+            DataOutputStream ios = new DataOutputStream(new FileOutputStream(Main.FileName+".index.tmp"));
+            for(int i=0; i < Index.indexes.length; ++i) {
+                for(int j = 0; j < Page.RECORDS_PER_PAGE; ++j) {
+                    Record r = Page.getFromPage(i, j);
+                    if(r==null) continue;
+                    int ov = r.overflow;
+                    while(ov != Record.OVERFLOW_NONE) {
+                        Record ovr = Page.getFromOverflow(ov);
+                        ov = ovr.overflow;
+                        if(ovr.isDeleted()) {_stat_deleted++; continue;}
+                        ovr.overflow = Record.OVERFLOW_NONE;
+                        fos.write(ovr.toBytes());
+                        _stat_records++;
+                        if(_ind==0) ios.writeInt(ovr.getId());
+                        _ind++;
+                        if(_ind == ALPHA_RECORDS) {
+                            _ind = 0;
+                            _page++;
+                            for(int k=0; k<RECORDS_PER_PAGE-ALPHA_RECORDS; ++k)
+                                fos.write(_empty);
+                        }
+                    }
+                    r = Page.getFromPage(i, j);
+                    if(r.isDeleted()) {_stat_deleted++; continue;}
+                    r.overflow = Record.OVERFLOW_NONE;
+                    fos.write(r.toBytes());
+                    _stat_records++;
+                    if(_ind==0) ios.writeInt(r.getId());
+                    _ind++;
+                    if(_ind == ALPHA_RECORDS) {
+                        _ind = 0;
+                        _page++;
+                        for(int k=0; k<RECORDS_PER_PAGE-ALPHA_RECORDS; ++k)
+                            fos.write(_empty);
+                    }
+                }
+            }
+            System.out.println("Wrote "+_page+" pages, "+_stat_records+" records and "+_stat_deleted+" were deleted");
+            ios.close();
+            fos.close();
+        } catch (IOException e) {
+            System.err.println(e.getMessage());
+        }
     }
 
     public static Record[][] sample_pages;

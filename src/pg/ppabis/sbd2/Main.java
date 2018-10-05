@@ -11,6 +11,8 @@ import static pg.ppabis.sbd2.Index.*;
 
 public class Main {
 
+    public static String FileName = "database.dat";
+
     public static int[] findInOverflow(int id, int of) {
         if (of == Record.OVERFLOW_NONE) return new int[]{-1, -1}; //Main record has no overflows
         int left = -1;
