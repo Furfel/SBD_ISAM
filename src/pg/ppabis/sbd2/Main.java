@@ -1,5 +1,7 @@
 package pg.ppabis.sbd2;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Random;
 import static pg.ppabis.sbd2.Page.*;
 import static pg.ppabis.sbd2.Index.*;
@@ -47,6 +49,15 @@ public class Main {
         return true;
     }
 
+    public static boolean updateRecordOA(int oa, Record r) {
+        Record e = getFromOverflow(oa);
+        if(e != null) {
+            if(e.getId()!= r.getId()) return false;
+            e.copyFrom(r);
+        } else setInOverflow(oa, r);
+        return true;
+    }
+
     public static boolean updateOverflowAddress(int[] place, int ov) {
         Record e = getFromPage(place[0], place[1]);
         if(e == null || e.getId() <= 0) return false;
@@ -89,9 +100,65 @@ public class Main {
         return place;
     }
 
-    public static void main(String[] args) {
+    public static void find(int id) {
+        int[] place = findPlaceForRecord(id);
+        Record r = getFromPage(place[0], place[1]);
+        if(r  == null) {
+            System.out.println("[!]>Rekord o id "+id+" nie istnieje!");
+        } else if(r.getId() == id && r.isDeleted()) {
+            System.out.println("[i]>Rekord o id "+id+" jest usuniety.");
+        } else if(r.getId() == id) {
+            System.out.println("[i]>Rekord znaleziony: strona "+place[0]+"["+place[1]+"] "+r);
+        } else {
+            place = findInOverflow(id, r.overflow);
+            if(isPlaceOnRecord(place))
+                System.out.println("[!]>Rekord o id "+id+" nie istnieje!");
+            else if(isPlaceOccupied(place)) {
+                r = getFromOverflow(place[0]);
+                if(r.getId() == id)
+                     System.out.println("[i]>Rekord znaleziony w overflow #"+place[0]+" "+r);
+                else System.out.println("[!]> Rekord o id "+id+" nie istnieje!");
+            } else {
+                System.out.println("[!]>Rekord o id "+id+" nie istnieje!");
+            }
+        }
+    }
+
+    public static void delete(int id) {
+        int[] place = findPlaceForRecord(id);
+        Record r = getFromPage(place[0], place[1]);
+        if(r  == null) {
+            System.out.println("[!]>Rekord o id "+id+" nie istnieje!");
+        } else if(r.getId() == id && r.isDeleted()) {
+            System.out.println("[i]>Rekord o id "+id+" jest usuniety.");
+        } else if(r.getId() == id) {
+            System.out.println("[i]>Usuwanie rekordu: strona "+place[0]+"["+place[1]+"] "+r);
+            r.delete();
+            updateRecord(place, r);
+        } else {
+            place = findInOverflow(id, r.overflow);
+            if(isPlaceOnRecord(place))
+                System.out.println("[!]>Rekord o id "+id+" nie istnieje!");
+            else if(isPlaceOccupied(place)) {
+                r = getFromOverflow(place[0]);
+                if(r.getId() == id) {
+                    System.out.println("[i]>Usuwanie rekordu w overflow #"+place[0]+" "+r);
+                    r.delete();
+                    updateRecordOA(place[0], r);
+                } else {
+                    System.out.println("[!]>Rekord o id "+id+" nie istnieje!");
+                }
+            } else {
+                System.out.println("[!]>Rekord o id "+id+" nie istnieje!");
+            }
+        }
+    }
+
+    public static void main(String[] args) throws FileNotFoundException, IOException {
         sampleDb();
         if (args.length > 0) {
+            new Script(args[0]).run();
+            if(args.length<2) return;
             int id = Integer.parseInt(args[0]);
             int[] res = findPlaceForRecord(id);
             int[] ovs = {-2, -3};

@@ -37,6 +37,11 @@ public class Page {
         //savePage()
     }
 
+    public static void setInOverflow(int oa, Record r) {
+        overflow[oa] = r;
+        //savePage()
+    }
+
     public static int putInOverflow(int id, byte[] data, int ov) {
         overflow[overflowRecords] = new Record(id, data, ov);
         overflowRecords++;
