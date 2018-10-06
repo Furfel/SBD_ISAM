@@ -26,8 +26,10 @@ public class Script {
     }
 
     public void run() {
+        String export_command_buffer = "";
         for(int i=0;i<script.length;++i) {
             String l = script[i];
+            export_command_buffer+=l+"<br>";
             String[] p = l.split(" ");
             switch(p[0]) {
                 case "find":
@@ -61,9 +63,13 @@ public class Script {
                 	if(p.length<=1) {
                         System.err.println("Malformed line "+(i+1)+": "+l);
                     } else {
-                        Main.export(p[1]);
+                        Main.export(p[1], export_command_buffer);
+                        export_command_buffer = "";
                     }
                 	break;
+                case "reorder":
+                    Page.reorder();
+                    break;
                 case "print":
                     Main.printDb(-1, -1, new int[]{-1, -1}, true);
                     break;

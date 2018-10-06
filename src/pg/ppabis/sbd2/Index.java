@@ -29,6 +29,7 @@ public class Index {
             int id=dis.readInt();
             indexesTemp.add(Integer.valueOf(id));
         }
+        dis.close();
         indexes = indexesTemp.stream().mapToInt(i -> i).toArray();
         System.out.println("[i]>Index: wczytano "+indexes.length+" indeksow");
     }

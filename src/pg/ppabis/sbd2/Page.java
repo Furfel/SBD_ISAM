@@ -1,9 +1,6 @@
 package pg.ppabis.sbd2;
 
-import java.io.DataOutputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,7 +20,7 @@ public class Page {
 
     public static int findPlaceInPageForRecord(int id) {
         int i = 0;
-        while (i < page.length && page[i] != null && id > page[i].getId()) ++i;
+        while (i < page.length && page[i] != null && page[i].getId()>0 && id > page[i].getId()) ++i;
         return i;
         /*while (i+1 < page.length && page[i+1] != null && page[i+1].getId() > 0 && page[i+1].getId() <= id) {
             ++i;
@@ -34,44 +31,70 @@ public class Page {
 
     public static Record getFromOverflow(int of) {
     	requestPageOA(of);
-    	//return page[of % RECORDS_PER_PAGE];
-        return overflow[of];
+    	return page[of % RECORDS_PER_PAGE];
+        //return overflow[of];
     }
 
     public static Record getFromPage(int pagen, int i) {
     	requestPage(pagen);
-        page = sample_pages[pagen]; //To be removed
+        //page = sample_pages[pagen]; //To be removed
         return page[i];
     }
 
     public static void setOnPage(int pagen, int i, Record r) {
     	requestPage(pagen);
-        page = sample_pages[pagen];
+        //page = sample_pages[pagen];
         page[i] = r;
         savePage();
     }
 
     public static void setInOverflow(int oa, Record r) {
     	requestPageOA(oa);
-        overflow[oa] = r;
+        page[oa % RECORDS_PER_PAGE] = r;
         savePage();
     }
     
     public static void pushPage(int Indexid) {
-    	 Index.pushId(Indexid);
-    	 //moveOverflowsABlockDown()
-    	 ArrayList<Record[]> tempPages = new ArrayList<Record[]>();
+        moveOverflowsABlockDown();
+    	Index.pushId(Indexid);
+    	/*
+        ArrayList<Record[]> tempPages = new ArrayList<Record[]>();
     	 tempPages.addAll(Arrays.asList(sample_pages));
     	 tempPages.add(new Record[RECORDS_PER_PAGE]);
-    	 sample_pages = tempPages.toArray(sample_pages);
+    	 sample_pages = tempPages.toArray(sample_pages);*/
     }
 
     public static int putInOverflow(int id, byte[] data, int ov) {
     	requestPageOA(overflowRecords);
-        overflow[overflowRecords] = new Record(id, data, ov);
+        page[overflowRecords % RECORDS_PER_PAGE] = new Record(id, data, ov);
         overflowRecords++;
         savePage();
         return overflowRecords-1;
+    }
+
+    public static void moveOverflowsABlockDown(){
+        int _stat_moved = 0;
+        try {
+            RandomAccessFile database = new RandomAccessFile(Main.FileName, "rw");
+            long begin = Index.indexes.length * BLOCK_SIZE;
+            byte[] buffer = new byte[BLOCK_SIZE];
+            long end = database.length()-BLOCK_SIZE;
+            while(end>=begin) {
+                database.seek(end);
+                database.read(buffer);
+                database.seek(end+BLOCK_SIZE);
+                database.write(buffer);
+                end-=BLOCK_SIZE;
+                _stat_moved++;
+            }
+            generateEmptyPage(buffer);
+            database.seek(begin);
+            database.write(buffer);
+            database.close();
+            System.out.println("Przeniesiono "+_stat_moved+" stron overflow.");
+        } catch(IOException e) {
+            System.err.println(e.getMessage());
+        }
     }
 
     public static void generateEmptyPage(byte[] out) {
@@ -171,6 +194,17 @@ public class Page {
             System.out.println("Wrote "+_page+" pages, "+_stat_records+" records and "+_stat_deleted+" were deleted");
             ios.close();
             fos.close();
+            File originalIndex = new File(Main.FileName+".index");
+            File originalDb = new File(Main.FileName);
+            File newIndex = new File(Main.FileName+".index.tmp");
+            File newDb = new File(Main.FileName+".tmp");
+            originalIndex.delete();
+            originalDb.delete();
+            Index.loadIndex(Main.FileName+".index.tmp");
+            try {Thread.sleep(200);} catch (Exception e) {}
+            newIndex.renameTo(originalIndex);
+            newDb.renameTo(originalDb);
+            currentPage = -1;
         } catch (IOException e) {
             System.err.println(e.getMessage());
         }

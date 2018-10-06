@@ -29,7 +29,7 @@ public class Main {
     public static int[] findPlaceForRecord(int id) {
         int pagen = findPageNumberForRecord(id);
         requestPage(pagen);
-        page = sample_pages[pagen]; //To be removed
+        //page = sample_pages[pagen]; //To be removed
         int place = findPlaceInPageForRecord(id);
         if (place >= RECORDS_PER_PAGE) {
             pagen++;
@@ -66,6 +66,7 @@ public class Main {
         Record e = getFromPage(place[0], place[1]);
         if(e == null || e.getId() <= 0) return false;
         e.overflow = ov;
+        savePage();
         return true;
     }
 
@@ -73,20 +74,23 @@ public class Main {
         Record e = getFromOverflow(placeOA);
         if(e == null || e.getId() <= 0) return false;
         e.overflow = ov;
+        savePage();
         return true;
     }
 
     public static int[] insertRecord(int id, byte[] data) {
         if(Index.isEmpty()) {
-            System.out.println("Wstawianie pierwszego rekordu i pierwszej strony");
+            System.out.println("[i]>Wstawianie (id:+"+id+") pierwszego rekordu i pierwszej strony");
             Index.pushId(id);
             Page.setOnPage(0, 0, new Record(id, data));
+            mainRecords++;
+            return new int[]{-1,-1};
         }
         int[] place = findPlaceForRecord(id);
         
         if(place[0] >= Index.indexes.length) {
         	Page.pushPage(id);
-        	updateRecord(place, new Record(id, data, -1));
+        	setOnPage(place[0], place[1], new Record(id, data, -1));
         	mainRecords++;
         	return place;
         }
@@ -95,41 +99,41 @@ public class Main {
         
         if(r != null && r.getId() == id) {
         	if(r.isDeleted()) {
-        		System.out.println("[i]>Nadpisywanie usunietego rekordu");
+        		System.out.println("[i]>Nadpisywanie (id:+"+id+") usunietego rekordu");
         		updateRecord(place, new Record(id, data, r.overflow));
         	} else {
-        		System.out.println("[!]>Rekord juz jest!");
+        		System.out.println("[!]>Rekord (id:+"+id+") juz jest!");
         	}
             return place;
         }
         
         if(r==null || r.getId()<=0) {
-            System.out.println("[i]>Wstawianie na stronie "+place[0]+"["+place[1]+"]");
-            updateRecord(place, new Record(id, data, -1));
+            System.out.println("[i]>Wstawianie (id:"+id+") na stronie "+place[0]+"["+place[1]+"]");
+            setOnPage(place[0], place[1], new Record(id, data, -1));
             mainRecords++;
         } else {
             int[] placeOA = findInOverflow(id, r.overflow);
             if( isPlaceOnRecord(placeOA) ) {
                 int newRec = putInOverflow(id, data, -1);
                 updateOverflowAddress(place, newRec);
-                System.out.println("[i]>Wstawianie w overflow ["+newRec+"]");
+                System.out.println("[i]>Wstawianie (id:+"+id+") w overflow ["+newRec+"]");
             } else if( isPlaceAtTheBeginningOfChain(placeOA) ) {
                 int newRec = putInOverflow(id, data, placeOA[1]);
                 updateOverflowAddress(place, newRec);
-                System.out.println("[i]>Wstawianie w overflow ["+newRec+"]");
+                System.out.println("[i]>Wstawianie (id:+"+id+") w overflow ["+newRec+"]");
             } else if( isPlaceOccupied(placeOA) ) {
             	r = getFromOverflow(placeOA[0]);
             	if(r.isDeleted()) {
-            		System.out.println("[i]>Nadpisywanie usunietego rekordu w overflow");
+            		System.out.println("[i]>Nadpisywanie (id:+"+id+") usunietego rekordu w overflow");
             		updateRecordOA(place[0], new Record(id, data, r.overflow));
             	} else {
-            		System.out.println("[!]>Rekord juz jest!");
+            		System.out.println("[!]>Rekord (id:+"+id+") juz jest!");
             	}
                 return place;
             } else {
                 int newRec = putInOverflow(id, data, placeOA[1]);
                 updadteOverflowAddressOA(placeOA[0], newRec);
-                System.out.println("[i]>Wstawianie w overflow ["+newRec+"]");
+                System.out.println("[i]>Wstawianie (id:+"+id+") w overflow ["+newRec+"]");
             }
         }
         return place;
@@ -171,7 +175,7 @@ public class Main {
         } else if(r.getId() == id) {
             System.out.println("[i]>Usuwanie rekordu: strona "+place[0]+"["+place[1]+"] "+r);
             r.delete();
-            updateRecord(place, r);
+            setOnPage(place[0], place[1], r);
         } else {
             place = findInOverflow(id, r.overflow);
             if(isPlaceOnRecord(place))
@@ -181,7 +185,7 @@ public class Main {
                 if(r.getId() == id) {
                     System.out.println("[i]>Usuwanie rekordu w overflow #"+place[0]+" "+r);
                     r.delete();
-                    updateRecordOA(place[0], r);
+                    setInOverflow(place[0], r);
                 } else {
                     System.out.println("[!]>Rekord o id "+id+" nie istnieje!");
                 }
@@ -192,7 +196,8 @@ public class Main {
     }
 
     public static void main(String[] args) throws FileNotFoundException, IOException {
-        sampleDb();
+        //sampleDb();
+        createDb();
         if (args.length > 0) {
             new Script(args[0]).run();
             if(args.length<2) return;
@@ -268,13 +273,26 @@ public class Main {
                 System.out.println(i+"\t"+(markOf[0] == i || markOf[1] == i ? "\t> " : "") + "#" + overflow[i]);
     }
     
-    public static void export(String file) {
+    public static void export(String file, String lastCommands) {
     	try {
     		FileWriter fw = new FileWriter(file);
     		BufferedWriter bw = new BufferedWriter(fw);
     			
-    			bw.write("<HTML><HEAD><STYLE TYPE=\"text/css\">.deleted {text-decoration: line-through;} table, th, td {border:1px solid #333; border-collapse:collapse; padding: 2px;} span.smallid {font-size: 9px; border: 1px solid #222; padding: 1px;}</STYLE></HEAD><BODY>Pages: <B>"+indexes.length+"</B><BR>Main records: <B>"+mainRecords+"</B><BR>Overflow records: <B>"+overflowRecords+"</B><BR>");
-    			
+    			bw.write("<HTML>" +
+                        "<HEAD>" +
+                        "<STYLE TYPE=\"text/css\">" +
+                        ".deleted {text-decoration: line-through;}" +
+                        "table, th, td {border:1px solid #333; border-collapse:collapse; padding: 2px;}" +
+                        "span.smallid {font-size: 9px; border: 1px solid #222; padding: 1px;}" +
+                        "p {font-family: Monospace, Lucida Console, System; font-size: 11px;}</STYLE>" +
+                        "</HEAD>" +
+                        "<BODY>" +
+                        "Pages: <B>"+indexes.length+"</B>" +
+                        "<BR>Main records: <B>"+mainRecords+"</B>" +
+                        "<BR>Overflow records: <B>"+overflowRecords+"</B><BR>");
+
+    			bw.write("<h3>Commands since last export:</h3><p>"+lastCommands+"</p>");
+
     			bw.write("<TABLE><TR><TH>ID</TH><TH>Page</TH></TR>");
     			for(int i = 0; i < indexes.length; ++i) {
     				bw.write("<TR><TD>"+indexes[i]+"</TD><TD>"+i+"</TD></TR>");
@@ -287,17 +305,17 @@ public class Main {
     				for(int j = 0; j < RECORDS_PER_PAGE; j++) {
     					Record r = getFromPage(i,  j);
     					if(r != null) {
+                            if(r.overflow != Record.OVERFLOW_NONE) {
+                                String overflowsLine = "";
+                                int ov = r.overflow;
+                                while(ov != Record.OVERFLOW_NONE) {
+                                    Record o = getFromOverflow(ov);
+                                    overflowsLine+="-> <SPAN CLASS=\"smallid\">"+ov+"</SPAN> "+o.getId();
+                                    ov = o.overflow;
+                                }
+                                bw.write("<TR STYLE=\"background: #EEFFFF\"><TD COLSPAN=\"3\">"+overflowsLine+"</TD></TR>");
+                            }
     						bw.write("<TR CLASS=\""+(r.isDeleted()?"deleted":"")+"\"><TD>"+r.getId()+"</TD><TD>"+new String(r.data)+"</TD><TD>"+r.overflow+"</TD></TR>");
-    						if(r.overflow != Record.OVERFLOW_NONE) {
-    							String overflowsLine = "";
-    							int ov = r.overflow;
-    			                while(ov != Record.OVERFLOW_NONE) {
-    			                    Record o = getFromOverflow(ov);
-    			                    overflowsLine+="-> <SPAN CLASS=\"smallid\">"+ov+"</SPAN> "+o.getId();
-    			                    ov = o.overflow;
-    			                }
-    							bw.write("<TR STYLE=\"background: #EEFFFF\"><TD COLSPAN=\"3\">"+overflowsLine+"</TD></TR>");
-    						}
     					}
     				}
     				bw.write("</TABLE><BR>");
