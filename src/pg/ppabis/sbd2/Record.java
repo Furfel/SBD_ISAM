@@ -78,4 +78,9 @@ public class Record {
     public String toString() {
         return getId()+": "+new String(data)+(overflow==OVERFLOW_NONE?"":" >>"+overflow);
     }
+    
+    public static Record straznik() {
+    	return new Record(Integer.MAX_VALUE, new byte[] {1,2,3});
+    }
+    
 }

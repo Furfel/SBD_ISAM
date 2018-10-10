@@ -194,6 +194,10 @@ public class Page {
             System.out.println("Wrote "+_page+" pages, "+_stat_records+" records and "+_stat_deleted+" were deleted");
             ios.close();
             fos.close();
+            RandomAccessFile fos2 = new RandomAccessFile(Main.FileName+".tmp", "rw");
+            fos2.seek(fos2.length()-Record.SIZE);
+            fos2.write(Record.straznik().toBytes());
+            fos2.close();
             File originalIndex = new File(Main.FileName+".index");
             File originalDb = new File(Main.FileName);
             File newIndex = new File(Main.FileName+".index.tmp");

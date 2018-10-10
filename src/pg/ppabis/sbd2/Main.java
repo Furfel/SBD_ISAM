@@ -83,6 +83,7 @@ public class Main {
             System.out.println("[i]>Wstawianie (id:+"+id+") pierwszego rekordu i pierwszej strony");
             Index.pushId(id);
             Page.setOnPage(0, 0, new Record(id, data));
+            Page.setOnPage(0, RECORDS_PER_PAGE-1, Record.straznik());
             mainRecords++;
             return new int[]{-1,-1};
         }
@@ -315,7 +316,7 @@ public class Main {
                                 }
                                 bw.write("<TR STYLE=\"background: #EEFFFF\"><TD COLSPAN=\"3\">"+overflowsLine+"</TD></TR>");
                             }
-    						bw.write("<TR CLASS=\""+(r.isDeleted()?"deleted":"")+"\"><TD>"+r.getId()+"</TD><TD>"+new String(r.data)+"</TD><TD>"+r.overflow+"</TD></TR>");
+    						bw.write("<TR CLASS=\""+(r.isDeleted()?"deleted":"")+"\"><TD>"+(r.getId()==Integer.MAX_VALUE?"-----":r.getId())+"</TD><TD>"+new String(r.data)+"</TD><TD>"+r.overflow+"</TD></TR>");
     					}
     				}
     				bw.write("</TABLE><BR>");
