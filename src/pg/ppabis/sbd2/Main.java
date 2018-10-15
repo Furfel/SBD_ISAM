@@ -89,6 +89,7 @@ public class Main {
             } catch (IOException e) {
                 System.err.println(e.getMessage());
             }
+            Page.setOnPage(0, RECORDS_PER_PAGE-1, Record.straznik());
             return new int[]{-1,-1};
         }
         int[] place = findPlaceForRecord(id);
@@ -405,7 +406,7 @@ public class Main {
                                 }
                                 bw.write("<TR STYLE=\"background: #EEFFFF\"><TD COLSPAN=\"3\">"+overflowsLine+"</TD></TR>");
                             }
-    						bw.write("<TR CLASS=\""+(r.isDeleted()?"deleted":"")+"\"><TD>"+r.getId()+"</TD><TD>"+new String(r.data)+"</TD><TD CLASS=\"overflow\">"+(r.overflow==Record.OVERFLOW_NONE?"":r.overflow)+"</TD></TR>");
+    						bw.write("<TR CLASS=\""+(r.isDeleted()?"deleted":"")+"\"><TD>"+(r.getId()==Integer.MAX_VALUE?"-----":r.getId())+"</TD><TD>"+new String(r.data)+"</TD><TD CLASS=\"overflow\">"+(r.overflow==Record.OVERFLOW_NONE?"":r.overflow)+"</TD></TR>");
     					}
     				}
     				bw.write("</TABLE></DIV><BR>");
