@@ -57,7 +57,21 @@ public class Script {
                         Main.delete(id);
                     }
                     break;
-                case "update":
+                case "edit":
+                    if(p.length<=2) {
+                        System.err.println("Malformed line "+(i+1)+": "+l);
+                    } else {
+                        int id = Integer.parseInt(p[1]);
+                        Main.editData(id, p[2].getBytes());
+                    }
+                    break;
+                case "editid":
+                    if(p.length<=2) {
+                        System.err.println("Malformed line "+(i+1)+": "+l);
+                    } else {
+                        int id = Integer.parseInt(p[1]);
+                        Main.editId(id, Integer.parseInt(p[2]));
+                    }
                     break;
                 case "export":
                 	if(p.length<=1) {

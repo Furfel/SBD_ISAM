@@ -5,6 +5,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import static pg.ppabis.sbd2.Index.saveRecordCounters;
+
 public class Page {
 
     public static final int RECORDS_PER_PAGE = 7;
@@ -17,6 +19,9 @@ public class Page {
 
     public static int overflowRecords = 0;
     public static int mainRecords = 0;
+
+    public static int stat_writes = 0;
+    public static int stat_reads = 0;
 
     public static int findPlaceInPageForRecord(int id) {
         int i = 0;
@@ -68,6 +73,11 @@ public class Page {
     	requestPageOA(overflowRecords);
         page[overflowRecords % RECORDS_PER_PAGE] = new Record(id, data, ov);
         overflowRecords++;
+        try {
+            saveRecordCounters();
+        } catch (IOException e) {
+            System.err.println(e.getMessage());
+        }
         savePage();
         return overflowRecords-1;
     }
@@ -92,6 +102,8 @@ public class Page {
             database.write(buffer);
             database.close();
             System.out.println("Przeniesiono "+_stat_moved+" stron overflow.");
+            stat_reads+=_stat_moved;
+            stat_writes+=_stat_moved;
         } catch(IOException e) {
             System.err.println(e.getMessage());
         }
@@ -125,6 +137,7 @@ public class Page {
     		page[i] = new Record(buffer);
     	}
     	currentPage = p;
+    	stat_reads++;
     }
     
     public static void requestPageOA(int addr) {
@@ -141,6 +154,7 @@ public class Page {
                 else file.write(page[i].toBytes());
             }
             file.close();
+            stat_writes++;
         } catch(IOException e) {
             System.err.println(e.getMessage());
         }
@@ -153,6 +167,7 @@ public class Page {
         try {
             FileOutputStream fos = new FileOutputStream(Main.FileName+".tmp");
             DataOutputStream ios = new DataOutputStream(new FileOutputStream(Main.FileName+".index.tmp"));
+            ios.writeInt(0); ios.writeInt(0);
             for(int i=0; i < Index.indexes.length; ++i) {
                 for(int j = 0; j < Page.RECORDS_PER_PAGE; ++j) {
                     Record r = Page.getFromPage(i, j);
@@ -204,6 +219,13 @@ public class Page {
             File newDb = new File(Main.FileName+".tmp");
             originalIndex.delete();
             originalDb.delete();
+            mainRecords = _stat_records;
+            overflowRecords = 0;
+            RandomAccessFile indexFile = new RandomAccessFile(newIndex, "rw");
+            indexFile.seek(0);
+            indexFile.writeInt(mainRecords);
+            indexFile.writeInt(0);
+            indexFile.close();
             Index.loadIndex(Main.FileName+".index.tmp");
             try {Thread.sleep(200);} catch (Exception e) {}
             newIndex.renameTo(originalIndex);
