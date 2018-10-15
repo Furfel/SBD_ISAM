@@ -83,7 +83,12 @@ public class Main {
             System.out.println("[i]>Wstawianie (id:+"+id+") pierwszego rekordu i pierwszej strony");
             Index.pushId(id);
             Page.setOnPage(0, 0, new Record(id, data));
-            mainRecords++;
+            try {
+                mainRecords++;
+                saveRecordCounters();
+            } catch (IOException e) {
+                System.err.println(e.getMessage());
+            }
             return new int[]{-1,-1};
         }
         int[] place = findPlaceForRecord(id);
@@ -91,7 +96,12 @@ public class Main {
         if(place[0] >= Index.indexes.length) {
         	Page.pushPage(id);
         	setOnPage(place[0], place[1], new Record(id, data, -1));
-        	mainRecords++;
+            try {
+                mainRecords++;
+                saveRecordCounters();
+            } catch (IOException e) {
+                System.err.println(e.getMessage());
+            }
         	return place;
         }
         
@@ -100,7 +110,7 @@ public class Main {
         if(r != null && r.getId() == id) {
         	if(r.isDeleted()) {
         		System.out.println("[i]>Nadpisywanie (id:+"+id+") usunietego rekordu");
-        		updateRecord(place, new Record(id, data, r.overflow));
+        		setOnPage(place[0], place[1], new Record(id, data, r.overflow));
         	} else {
         		System.out.println("[!]>Rekord (id:+"+id+") juz jest!");
         	}
@@ -110,7 +120,12 @@ public class Main {
         if(r==null || r.getId()<=0) {
             System.out.println("[i]>Wstawianie (id:"+id+") na stronie "+place[0]+"["+place[1]+"]");
             setOnPage(place[0], place[1], new Record(id, data, -1));
-            mainRecords++;
+            try {
+                mainRecords++;
+                saveRecordCounters();
+            } catch (IOException e) {
+                System.err.println(e.getMessage());
+            }
         } else {
             int[] placeOA = findInOverflow(id, r.overflow);
             if( isPlaceOnRecord(placeOA) ) {
@@ -125,7 +140,7 @@ public class Main {
             	r = getFromOverflow(placeOA[0]);
             	if(r.isDeleted()) {
             		System.out.println("[i]>Nadpisywanie (id:+"+id+") usunietego rekordu w overflow");
-            		updateRecordOA(place[0], new Record(id, data, r.overflow));
+            		setInOverflow(place[0], new Record(id, data, r.overflow));
             	} else {
             		System.out.println("[!]>Rekord (id:+"+id+") juz jest!");
             	}
@@ -164,7 +179,7 @@ public class Main {
         }
     }
 
-    public static void delete(int id) {
+    public static void editId(int id, int newid) {
         if(Index.isEmpty()) {System.out.println("[!]>Baza danych jest pusta!"); return;}
         int[] place = findPlaceForRecord(id);
         Record r = getFromPage(place[0], place[1]);
@@ -173,9 +188,10 @@ public class Main {
         } else if(r.getId() == id && r.isDeleted()) {
             System.out.println("[i]>Rekord o id "+id+" jest usuniety.");
         } else if(r.getId() == id) {
-            System.out.println("[i]>Usuwanie rekordu: strona "+place[0]+"["+place[1]+"] "+r);
+            System.out.println("[i]>Rekord znaleziony: strona "+place[0]+"["+place[1]+"] "+r);
             r.delete();
             setOnPage(place[0], place[1], r);
+            insertRecord(newid, r.data);
         } else {
             place = findInOverflow(id, r.overflow);
             if(isPlaceOnRecord(place))
@@ -186,6 +202,36 @@ public class Main {
                     System.out.println("[i]>Usuwanie rekordu w overflow #"+place[0]+" "+r);
                     r.delete();
                     setInOverflow(place[0], r);
+                    insertRecord(newid, r.data);
+                } else System.out.println("[!]> Rekord o id "+id+" nie istnieje!");
+            } else {
+                System.out.println("[!]>Rekord o id "+id+" nie istnieje!");
+            }
+        }
+    }
+
+    public static void editData(int id, byte[] data) {
+        if(Index.isEmpty()) {System.out.println("[!]>Baza danych jest pusta!"); return;}
+        int[] place = findPlaceForRecord(id);
+        Record r = getFromPage(place[0], place[1]);
+        if(r  == null) {
+            System.out.println("[!]>Rekord o id "+id+" nie istnieje!");
+        } else if(r.getId() == id && r.isDeleted()) {
+            System.out.println("[i]>Rekord o id "+id+" jest usuniety.");
+        } else if(r.getId() == id) {
+            System.out.println("[i]>Edycja rekordu: strona "+place[0]+"["+place[1]+"] "+r);
+            r = new Record(r.getId(), r.data, r.overflow);
+            setOnPage(place[0], place[1], r);
+        } else {
+            place = findInOverflow(id, r.overflow);
+            if(isPlaceOnRecord(place))
+                System.out.println("[!]>Rekord o id "+id+" nie istnieje!");
+            else if(isPlaceOccupied(place)) {
+                r = getFromOverflow(place[0]);
+                if(r.getId() == id) {
+                    System.out.println("[i]>Usuwanie rekordu w overflow #"+place[0]+" "+r);
+                    r = new Record(r.getId(), r.data, r.overflow);
+                    setInOverflow(place[0], r);
                 } else {
                     System.out.println("[!]>Rekord o id "+id+" nie istnieje!");
                 }
@@ -193,6 +239,40 @@ public class Main {
                 System.out.println("[!]>Rekord o id "+id+" nie istnieje!");
             }
         }
+    }
+
+    public static boolean delete(int id) {
+        if(Index.isEmpty()) {System.out.println("[!]>Baza danych jest pusta!"); return false;}
+        int[] place = findPlaceForRecord(id);
+        Record r = getFromPage(place[0], place[1]);
+        if(r  == null) {
+            System.out.println("[!]>Rekord o id "+id+" nie istnieje!");
+        } else if(r.getId() == id && r.isDeleted()) {
+            System.out.println("[i]>Rekord o id "+id+" jest usuniety.");
+        } else if(r.getId() == id) {
+            System.out.println("[i]>Usuwanie rekordu: strona "+place[0]+"["+place[1]+"] "+r);
+            r.delete();
+            setOnPage(place[0], place[1], r);
+            return true;
+        } else {
+            place = findInOverflow(id, r.overflow);
+            if(isPlaceOnRecord(place))
+                System.out.println("[!]>Rekord o id "+id+" nie istnieje!");
+            else if(isPlaceOccupied(place)) {
+                r = getFromOverflow(place[0]);
+                if(r.getId() == id) {
+                    System.out.println("[i]>Usuwanie rekordu w overflow #"+place[0]+" "+r);
+                    r.delete();
+                    setInOverflow(place[0], r);
+                    return true;
+                } else {
+                    System.out.println("[!]>Rekord o id "+id+" nie istnieje!");
+                }
+            } else {
+                System.out.println("[!]>Rekord o id "+id+" nie istnieje!");
+            }
+        }
+        return false;
     }
 
     public static void main(String[] args) throws FileNotFoundException, IOException {
@@ -281,15 +361,25 @@ public class Main {
     			bw.write("<HTML>" +
                         "<HEAD>" +
                         "<STYLE TYPE=\"text/css\">" +
-                        ".deleted {text-decoration: line-through;}" +
+                        "h1 {font-size: 24px; margin: 8px 1px;}" +
+                        "h4 {margin: 4px 2px;}" +
+                        "h3 {margin: 4px 2px;}" +
+                        "h5 {font-size: 13px; padding: 4px; display: inline-block; margin: 4px 2px; font-weight: normal; border: 1px solid #333; background: #ffffee;}" +
+                        "h5 b {font-weight:bold;}" +
+                        "div.flexbox {display:flex; width:100%; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; align-items:center; align-content: flex-start;}" +
+                        "div.flexchild {display: inline-block; margin: 12px;}"+
+                        ".deleted {text-decoration: line-through; color: #222;}" +
                         "table, th, td {border:1px solid #333; border-collapse:collapse; padding: 2px;}" +
                         "span.smallid {font-size: 9px; border: 1px solid #222; padding: 1px;}" +
-                        "p {font-family: Monospace, Lucida Console, System; font-size: 11px;}</STYLE>" +
+                        "td.overflow {text-align: right; padding: 1px 8px;}" +
+                        "p {padding: 4px; display: inline-block; border: 1px solid #333; background: #eeffff; font-family: Monospace, Lucida Console, System; font-size: 13px;}</STYLE>" +
                         "</HEAD>" +
                         "<BODY>" +
-                        "Pages: <B>"+indexes.length+"</B>" +
-                        "<BR>Main records: <B>"+mainRecords+"</B>" +
-                        "<BR>Overflow records: <B>"+overflowRecords+"</B><BR>");
+                        "<h1>"+file+"</h1>" +
+                        "<h5>This session - reads: <B>" + Page.stat_reads+ "</B> writes: <B>"+Page.stat_writes+"</B>" +
+                        " &bull; Pages: <B>"+indexes.length+"</B>" +
+                        " &bull; Main records: <B>"+mainRecords+"</B>" +
+                        " &bull; Overflow records: <B>"+overflowRecords+"</B></h5>");
 
     			bw.write("<h3>Commands since last export:</h3><p>"+lastCommands+"</p>");
 
@@ -297,10 +387,10 @@ public class Main {
     			for(int i = 0; i < indexes.length; ++i) {
     				bw.write("<TR><TD>"+indexes[i]+"</TD><TD>"+i+"</TD></TR>");
     			}
-    			bw.write("</TABLE><BR>");
+    			bw.write("</TABLE><BR><DIV CLASS=\"flexbox\">");
     			
     			for(int i = 0; i < indexes.length; ++i) {
-    				bw.write("<H4>Page "+i+"</H4>");
+    				bw.write("<DIV CLASS=\"flexchild\"><H4>Page "+i+"</H4>");
     				bw.write("<TABLE><TR><TH>ID</TH><TH>Data</TH><TH>Overflow</TH></TR>");
     				for(int j = 0; j < RECORDS_PER_PAGE; j++) {
     					Record r = getFromPage(i,  j);
@@ -310,18 +400,18 @@ public class Main {
                                 int ov = r.overflow;
                                 while(ov != Record.OVERFLOW_NONE) {
                                     Record o = getFromOverflow(ov);
-                                    overflowsLine+="-> <SPAN CLASS=\"smallid\">"+ov+"</SPAN> "+o.getId();
+                                    overflowsLine+="-> <SPAN CLASS=\"smallid\">"+ov+"</SPAN><SPAN CLASS=\""+(o.isDeleted()?"deleted":"")+"\">"+o.getId()+"</SPAN>";
                                     ov = o.overflow;
                                 }
                                 bw.write("<TR STYLE=\"background: #EEFFFF\"><TD COLSPAN=\"3\">"+overflowsLine+"</TD></TR>");
                             }
-    						bw.write("<TR CLASS=\""+(r.isDeleted()?"deleted":"")+"\"><TD>"+r.getId()+"</TD><TD>"+new String(r.data)+"</TD><TD>"+r.overflow+"</TD></TR>");
+    						bw.write("<TR CLASS=\""+(r.isDeleted()?"deleted":"")+"\"><TD>"+r.getId()+"</TD><TD>"+new String(r.data)+"</TD><TD CLASS=\"overflow\">"+(r.overflow==Record.OVERFLOW_NONE?"":r.overflow)+"</TD></TR>");
     					}
     				}
-    				bw.write("</TABLE><BR>");
+    				bw.write("</TABLE></DIV><BR>");
     			}
     			
-    			bw.write("</HTML></BODY>");
+    			bw.write("</DIV></HTML></BODY>");
     		
     		bw.flush();
     		bw.close();

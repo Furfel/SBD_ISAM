@@ -3,6 +3,7 @@ package pg.ppabis.sbd2;
 import java.io.DataInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 
 public class Index {
@@ -25,6 +26,8 @@ public class Index {
     public static void loadIndex(String file) throws IOException {
         ArrayList<Integer> indexesTemp = new ArrayList<>();
         DataInputStream dis = new DataInputStream(new FileInputStream(file));
+        if(dis.available()>=4) Page.mainRecords = dis.readInt();
+        if(dis.available()>=4) Page.overflowRecords = dis.readInt();
         while(dis.available()>=4) {
             int id=dis.readInt();
             indexesTemp.add(Integer.valueOf(id));
@@ -32,6 +35,14 @@ public class Index {
         dis.close();
         indexes = indexesTemp.stream().mapToInt(i -> i).toArray();
         System.out.println("[i]>Index: wczytano "+indexes.length+" indeksow");
+    }
+
+    public static void saveRecordCounters() throws IOException {
+        RandomAccessFile randomAccessFile = new RandomAccessFile(Main.FileName+".index", "rw");
+        randomAccessFile.seek(0);
+        randomAccessFile.writeInt(Page.mainRecords);
+        randomAccessFile.writeInt(Page.overflowRecords);
+        randomAccessFile.close();
     }
 
     public static void createEmptyIndex() {
