@@ -40,6 +40,7 @@ public class Script {
                     System.err.println("Malformed line "+(i+1)+": "+l);
                 } else {
                     int id = Integer.parseInt(p[1]);
+                    if(id==Integer.MAX_VALUE) {System.err.println("Nie dotykac straznika."); return;}
                     Main.find(id);
                 }
                 break;
@@ -48,6 +49,7 @@ public class Script {
             		System.err.println("Malformed line "+(i+1)+": "+l);
             	} else {
             		int id = Integer.parseInt(p[1]);
+                    if(id==Integer.MAX_VALUE) {System.err.println("Nie dotykac straznika."); return;}
             		byte[] data = p[2].getBytes();
             		Main.insertRecord(id, data);
             	}
@@ -58,6 +60,7 @@ public class Script {
                     System.err.println("Malformed line "+(i+1)+": "+l);
                 } else {
                     int id = Integer.parseInt(p[1]);
+                    if(id==Integer.MAX_VALUE) {System.err.println("Nie dotykac straznika."); return;}
                     Main.delete(id);
                 }
                 break;
@@ -66,6 +69,7 @@ public class Script {
                     System.err.println("Malformed line "+(i+1)+": "+l);
                 } else {
                     int id = Integer.parseInt(p[1]);
+                    if(id==Integer.MAX_VALUE) {System.err.println("Nie dotykac straznika."); return;}
                     Main.editData(id, p[2].getBytes());
                 }
                 break;
@@ -74,6 +78,7 @@ public class Script {
                     System.err.println("Malformed line "+(i+1)+": "+l);
                 } else {
                     int id = Integer.parseInt(p[1]);
+                    if(id==Integer.MAX_VALUE || Integer.parseInt(p[2])==Integer.MAX_VALUE) {System.err.println("Nie dotykac straznika."); return;}
                     Main.editId(id, Integer.parseInt(p[2]));
                 }
                 break;
