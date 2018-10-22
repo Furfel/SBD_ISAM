@@ -375,7 +375,7 @@ public class Main {
                         "</HEAD>" +
                         "<BODY>" +
                         "<h1>"+file+"</h1>" +
-                        "<h5>This session - reads: <B>" + Page.stat_reads+ "</B> writes: <B>"+Page.stat_writes+"</B>" +
+                        "<h5>This session - reads: <B>" + Page.stat_reads+ "</B> writes: <B>"+Page.stat_writes+"</B> reorgs: <B>"+Page.stat_reorg+"</B> " +
                         " &bull; Pages: <B>"+indexes.length+"</B>" +
                         " &bull; Main records: <B>"+mainRecords+"</B>" +
                         " &bull; Overflow records: <B>"+overflowRecords+"</B></h5>");

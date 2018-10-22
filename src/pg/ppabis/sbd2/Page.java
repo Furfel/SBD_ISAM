@@ -2,6 +2,7 @@ package pg.ppabis.sbd2;
 
 import java.io.*;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 
 import static pg.ppabis.sbd2.Index.saveRecordCounters;
 
@@ -21,6 +22,7 @@ public class Page {
 
     public static int stat_writes = 0;
     public static int stat_reads = 0;
+    public static int stat_reorg = 0;
 
     public static int findPlaceInPageForRecord(int id) {
         int i = 0;
@@ -162,17 +164,22 @@ public class Page {
     public static void reorder() {
         int _page = 0, _ind = 0;
         int _stat_records = 0, _stat_deleted = 0;
+        byte[] np = new byte[BLOCK_SIZE];
         final byte[] _empty = new Record(0, new byte[] {0}).toBytes();
         try {
+        	generateEmptyPage(np);
+        	ByteBuffer buffer = ByteBuffer.wrap(np);
+        	ArrayList<Integer> indexList = new ArrayList<>();
         	File newIndex = new File(Main.FileName+".index.tmp");
             File newDb = new File(Main.FileName+".tmp");
             FileOutputStream fos = new FileOutputStream(newDb);
-            DataOutputStream ios = new DataOutputStream(new FileOutputStream(newIndex));
-            ios.writeInt(0); ios.writeInt(0);
+            
             for(int i=0; i < Index.indexes.length; ++i) {
                 for(int j = 0; j < Page.RECORDS_PER_PAGE; ++j) {
-                    Record r = Page.getFromPage(i, j);
+                    
+                	Record r = Page.getFromPage(i, j);
                     if(r==null) continue;
+                    
                     int ov = r.overflow;
                     while(ov != Record.OVERFLOW_NONE) {
                         Record ovr = Page.getFromOverflow(ov);
@@ -180,53 +187,68 @@ public class Page {
                         if(ovr.isDeleted()) {_stat_deleted++; continue;}
                         if(ovr.getId()<=0) continue;
                         ovr.overflow = Record.OVERFLOW_NONE;
-                        fos.write(ovr.toBytes());
+                        buffer.put(ovr.toBytes());
                         _stat_records++;
-                        if(_ind==0) ios.writeInt(ovr.getId());
+                        if(_ind==0) indexList.add(ovr.getId());
                         _ind++;
                         if(_ind == ALPHA_RECORDS) {
                             _ind = 0;
                             _page++;
                             for(int k=0; k<RECORDS_PER_PAGE-ALPHA_RECORDS; ++k)
-                                fos.write(_empty);
+                            	buffer.put(_empty);
+                            fos.write(np);
+                            stat_writes++;
+                            buffer.rewind();
                         }
                     }
+                    
                     r = Page.getFromPage(i, j);
                     if(r.isDeleted()) {_stat_deleted++; continue;}
                     if(r.getId()<=0 || r.getId()==Integer.MAX_VALUE) continue;
                     r.overflow = Record.OVERFLOW_NONE;
-                    fos.write(r.toBytes());
+                    buffer.put(r.toBytes());
                     _stat_records++;
-                    if(_ind==0) ios.writeInt(r.getId());
+                    if(_ind==0) indexList.add(r.getId());
                     _ind++;
                     if(_ind == ALPHA_RECORDS) {
                         _ind = 0;
                         _page++;
                         for(int k=0; k<RECORDS_PER_PAGE-ALPHA_RECORDS; ++k)
-                            fos.write(_empty);
+                            buffer.put(_empty);
+                        fos.write(np);
+                        stat_writes++;
+                        buffer.rewind();
                     }
                 }
             }
-            System.out.println("Wrote "+_page+" pages, "+_stat_records+" records and "+_stat_deleted+" were deleted");
-            ios.close();
+            
             for(;_ind<RECORDS_PER_PAGE-1;++_ind) {
-            	fos.write(_empty);
+            	buffer.put(_empty);
             }
-            fos.write(Record.straznik().toBytes());
+            buffer.put(Record.straznik().toBytes());
+            fos.write(np);
             fos.close();
-            RandomAccessFile fos2 = new RandomAccessFile(newDb, "rw");
+            System.out.println("Wrote "+_page+" pages, "+_stat_records+" records and "+_stat_deleted+" were deleted");
+            /*RandomAccessFile fos2 = new RandomAccessFile(newDb, "rw");
             fos2.seek(fos2.length()-Record.SIZE);
             fos2.write(Record.straznik().toBytes());
-            fos2.close();
+            fos2.close();*/
+            
             File originalIndex = new File(Main.FileName+".index");
             File originalDb = new File(Main.FileName);
             mainRecords = _stat_records;
             overflowRecords = 0;
-            RandomAccessFile indexFile = new RandomAccessFile(newIndex, "rw");
-            indexFile.seek(0);
-            indexFile.writeInt(mainRecords);
-            indexFile.writeInt(0);
-            indexFile.close();
+            
+            ByteBuffer indexbuffer = ByteBuffer.allocate(8+indexList.size()*8);
+            indexbuffer.putInt(mainRecords); indexbuffer.putInt(overflowRecords);
+            for(int i = 0; i < indexList.size(); ++i)
+            	buffer.putInt(indexList.get(i));
+            
+            DataOutputStream ios = new DataOutputStream(new FileOutputStream(newIndex));
+            ios.write(indexbuffer.array());
+            ios.close();
+            stat_writes++;
+            
             Index.loadIndex(newIndex.getName());
             originalIndex.delete();
             originalDb.delete();
@@ -234,6 +256,7 @@ public class Page {
             newIndex.renameTo(originalIndex);
             newDb.renameTo(originalDb);
             currentPage = -1;
+            stat_reorg++;
         } catch (IOException e) {
             System.err.println(e.getMessage());
         }
