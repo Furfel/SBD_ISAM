@@ -103,6 +103,7 @@ public class Script {
     }
     
     public void run() {
+    	if(script == null) return;
         for(int i=0;i<script.length;++i) {
             String l = script[i];
             parseLine(l,i);

@@ -329,10 +329,10 @@ public class Main {
     }
 
     public static void printDb(int markPg, int markRec, int[] markOf, boolean follow) {
-        for (int i = 0; i < sample_pages.length; ++i) {
-            System.out.println((i == markPg ? "> " : "") + "Page #" + i);
+        for (int i = 0; i < Index.indexes.length; ++i) {
+            System.out.println("Page #" + i);
             System.out.println("--------");
-            for (int j = 0; j < sample_pages[i].length; ++j) {
+            for (int j = 0; j < Page.RECORDS_PER_PAGE; ++j) {
                 String ovString = "";
                 if(follow && getFromPage(i, j) != null) {
                     int ov = getFromPage(i, j).overflow;
@@ -342,14 +342,14 @@ public class Main {
                         ov = o.overflow;
                     }
                 }
-                System.out.println((j == markRec && i == markPg ? "\t> " : "") + getFromPage(i, j) + ovString);
+                System.out.println(getFromPage(i, j) + ovString);
             }
         }
         if(follow) return;
         System.out.println();
         for (int i = 0; i < overflow.length; ++i)
             if (overflow[i] != null)
-                System.out.println(i+"\t"+(markOf[0] == i || markOf[1] == i ? "\t> " : "") + "#" + overflow[i]);
+                System.out.println(i+"\t#" + overflow[i]);
     }
     
     public static void export(String file, String lastCommands) {

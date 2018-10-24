@@ -239,10 +239,10 @@ public class Page {
             mainRecords = _stat_records;
             overflowRecords = 0;
             
-            ByteBuffer indexbuffer = ByteBuffer.allocate(8+indexList.size()*8);
+            ByteBuffer indexbuffer = ByteBuffer.allocate(8+indexList.size()*4);
             indexbuffer.putInt(mainRecords); indexbuffer.putInt(overflowRecords);
             for(int i = 0; i < indexList.size(); ++i)
-            	buffer.putInt(indexList.get(i));
+            	indexbuffer.putInt(indexList.get(i));
             
             DataOutputStream ios = new DataOutputStream(new FileOutputStream(newIndex));
             ios.write(indexbuffer.array());
