@@ -99,6 +99,9 @@ public class Script {
             case "print":
                 Main.printDb(-1, -1, new int[]{-1, -1}, true);
                 break;
+            case "printall":
+            	try {Main.directPrint();} catch(Exception e) {System.err.println(e.getMessage());}
+            	break;
         }
     }
     

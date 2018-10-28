@@ -139,7 +139,7 @@ public class Main {
             	r = getFromOverflow(placeOA[0]);
             	if(r.isDeleted()) {
             		System.out.println("[i]>Nadpisywanie (id:+"+id+") usunietego rekordu w overflow");
-            		setInOverflow(place[0], new Record(id, data, r.overflow));
+            		setInOverflow(placeOA[0], new Record(id, data, r.overflow));
             	} else {
             		System.out.println("[!]>Rekord (id:+"+id+") juz jest!");
             	}
@@ -328,6 +328,31 @@ public class Main {
         }
     }
 
+    public static void directPrint() throws IOException {
+    	DataInputStream index = new DataInputStream(new FileInputStream(Main.FileName+".index"));
+    		int i=0;
+    		System.out.println("Records: "+index.readInt()+"\nOverflow: "+index.readInt());
+    		while(index.available()>=4)
+    			System.out.println( (i++)+": "+index.readInt());
+    	index.close();
+    	FileInputStream fis = new FileInputStream(Main.FileName);
+    	byte[] record = new byte[Record.SIZE];
+    	for(i=0; i < Index.indexes.length; ++i) {
+    		System.out.println("Page # "+i+"\n----------");
+    		for(int j=0; j < Page.RECORDS_PER_PAGE; ++j) {
+    			fis.read(record);
+    			System.out.println(new Record(record));
+    		}
+    		System.out.println("");
+    	}
+    	System.out.println("Overflow\n---------");
+    	while(fis.available()>=Record.SIZE) {
+    		fis.read(record);
+    		System.out.println(new Record(record));
+    	}
+    	fis.close();
+    }
+    
     public static void printDb(int markPg, int markRec, int[] markOf, boolean follow) {
         for (int i = 0; i < Index.indexes.length; ++i) {
             System.out.println("Page #" + i);
@@ -338,11 +363,13 @@ public class Main {
                     int ov = getFromPage(i, j).overflow;
                     while(ov != Record.OVERFLOW_NONE) {
                         Record o = getFromOverflow(ov);
-                        ovString+=" -> "+ov+":"+o.getId();
+                        if(o.isDeleted()) ovString += " -> x"+o.getId()+"x";
+                        else ovString+=" -> "+o.getId()+": "+new String(o.data);
                         ov = o.overflow;
                     }
                 }
-                System.out.println(getFromPage(i, j) + ovString);
+                Record o = getFromPage(i, j);
+                System.out.println( (o.isDeleted()?"xxx":o) + ovString);
             }
         }
         if(follow) return;

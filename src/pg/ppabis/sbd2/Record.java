@@ -76,7 +76,7 @@ public class Record {
 
     @Override
     public String toString() {
-        return getId()+": "+new String(data)+(overflow==OVERFLOW_NONE?"":" >>"+overflow);
+        return getId()+": "+new String(data).trim()+(overflow==OVERFLOW_NONE?"":" >>"+overflow);
     }
     
     public static Record straznik() {
