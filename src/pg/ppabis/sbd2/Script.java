@@ -95,6 +95,7 @@ public class Script {
                 break;
             case "stat":
             	System.out.println("Reorgs: "+Page.stat_reorg+"\nReads: "+Page.stat_reads+"\nWrites: "+Page.stat_writes);
+            	System.out.println("Records: "+Page.mainRecords+"\nOverflows: "+Page.overflowRecords+"\nIndexes/Pages: "+Index.indexes.length);
             	break;
             case "print":
                 Main.printDb(-1, -1, new int[]{-1, -1}, true);
